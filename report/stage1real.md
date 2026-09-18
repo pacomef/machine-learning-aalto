@@ -78,9 +78,9 @@ I used Claude to typeset this document, and also to debug a lot of the functions
 
 References:
 
-[1] Codeforces. https://codeforces.com. Accessed 18 September 2026.
+[1] Codeforces. https://codeforces.com. Accessed 17 September 2026.
 
-[2] Codeforces API Documentation. https://codeforces.com/apiHelp. Accessed 18 September 2026.
+[2] Codeforces API Documentation. https://codeforces.com/apiHelp. Accessed 17 September 2026.
 
 Appendix: code
 

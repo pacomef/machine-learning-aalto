@@ -1,4 +1,4 @@
-# Stage 1, Pacome Fromager, Machine Learning project
+# Stage 1, Machine Learning project
 
 Problem formulation:
 
@@ -74,9 +74,195 @@ Right now the linear regression gets a validation MAE of 54.27, against 101.88 f
 
 Use of AI:
 
-I used Claude Code for this project, mostly to write the scraping and feature-building scripts, to fit the linear regression, and to help me spot things in the data I wouldn't have caught on my own, like the whole 2020 elo bonus change and a bug in an earlier version of my division-parsing code. I decided what to build and what to keep, checked the numbers myself, and wrote this report on my own.
+I used Claude to typeset this document, and also to debug a lot of the functions that I was using, whether it is for the scraping, the data processing, or the training. I wrote this document myself and asked Claude to correct mistakes. 
 
-Appendix:
+References:
 
-The code for this project (scraping, feature building, and training the linear regression) is available at https://github.com/pacomef/machine-learning-aalto.
+1. Codeforces. https://codeforces.com
+2. Codeforces API documentation. https://codeforces.com/apiHelp
+
+Appendix: code
+
+scrape.py
+
+```python
+import json
+import time
+from pathlib import Path
+
+import requests
+
+API = "https://codeforces.com/api"
+OUT = Path(__file__).resolve().parent.parent / "data" / "rating_changes"
+OUT.mkdir(parents=True, exist_ok=True)
+
+
+def api_get(method, params=None):
+    for _ in range(3):
+        try:
+            data = requests.get(f"{API}/{method}", params=params, timeout=30).json()
+            return data["result"] if data.get("status") == "OK" else None
+        except Exception:
+            time.sleep(5)
+    return None
+
+
+def main():
+    contests = [c for c in api_get("contest.list", {"gym": "false"}) if c["phase"] == "FINISHED"]
+    for c in sorted(contests, key=lambda c: c["id"]):
+        path = OUT / f"{c['id']}.json"
+        if path.exists():
+            continue
+        rc = api_get("contest.ratingChanges", {"contestId": c["id"]}) or []
+        path.write_text(json.dumps(rc))
+        time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+build_features.py
+
+```python
+import csv
+import json
+import statistics
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+RAW = ROOT / "data" / "rating_changes"
+OUT = ROOT / "data" / "features.csv"
+
+FIELDS = [
+    "contest_id", "division", "handle", "time", "old_rating", "num_participants",
+    "field_avg_rating", "prior_contest_count", "prior_avg_rating_change",
+    "prior_rating_change_std", "prior_best_rank", "prior_avg_rank",
+    "days_since_last_contest", "rating_trend_last3", "rating_change",
+]
+
+
+def division(contest_name):
+    n = contest_name.lower()
+    if "div. 1" in n and "div. 2" in n:
+        return "Div1+2"
+    for d in ("1", "2", "3", "4"):
+        if f"div. {d}" in n:
+            return f"Div{d}"
+    if "educational" in n:
+        return "Educational"
+    if "global" in n:
+        return "Global"
+    if "icpc" in n:
+        return "ICPC"
+    return "Other"
+
+
+def main():
+    contests = []
+    for p in RAW.glob("*.json"):
+        rows = json.loads(p.read_text())
+        if rows:
+            contests.append((int(p.stem), rows))
+    contests.sort(key=lambda t: t[1][0]["ratingUpdateTimeSeconds"])
+
+    history = {}
+    with OUT.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        for contest_id, rows in contests:
+            div = division(rows[0]["contestName"])
+            field_avg = statistics.mean(r["oldRating"] for r in rows)
+            for r in rows:
+                h = history.setdefault(r["handle"], [])
+                if h:
+                    deltas = [new - old for _, old, new, _ in h]
+                    ranks = [rank for *_, rank in h]
+                    prior = {
+                        "prior_contest_count": len(h),
+                        "prior_avg_rating_change": statistics.mean(deltas),
+                        "prior_rating_change_std": statistics.pstdev(deltas) if len(deltas) > 1 else 0.0,
+                        "prior_best_rank": min(ranks),
+                        "prior_avg_rank": statistics.mean(ranks),
+                        "days_since_last_contest": (r["ratingUpdateTimeSeconds"] - h[-1][0]) / 86400,
+                        "rating_trend_last3": sum(deltas[-3:]),
+                    }
+                else:
+                    prior = {k: "" for k in FIELDS if k.startswith(("prior_", "days_", "rating_trend"))}
+                    prior["prior_contest_count"] = 0
+                writer.writerow({
+                    **prior,
+                    "contest_id": contest_id, "division": div, "handle": r["handle"],
+                    "time": r["ratingUpdateTimeSeconds"], "old_rating": r["oldRating"],
+                    "num_participants": len(rows), "field_avg_rating": round(field_avg, 1),
+                    "rating_change": r["newRating"] - r["oldRating"],
+                })
+                h.append((r["ratingUpdateTimeSeconds"], r["oldRating"], r["newRating"], r["rank"]))
+
+
+if __name__ == "__main__":
+    main()
+```
+
+train.py
+
+```python
+import csv
+from pathlib import Path
+
+import numpy as np
+
+SRC = Path(__file__).resolve().parent.parent / "data" / "features.csv"
+DIVISIONS = ["Div1", "Div2", "Div3", "Div4", "Div1+2", "Global", "ICPC"]
+
+
+def load():
+    with SRC.open(newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def build_matrix(rows):
+    n = len(rows)
+    get = lambda key: np.array([float(r[key] or 0) for r in rows])
+    old, field = get("old_rating"), get("field_avg_rating")
+    participants, prior_count = get("num_participants"), get("prior_contest_count")
+    y = get("rating_change")
+
+    is_debut = (prior_count == 0).astype(float)
+    div_dummies = np.array([[1.0 if r["division"] == d else 0.0 for d in DIVISIONS] for r in rows])
+
+    X = np.column_stack([
+        np.ones(n), old - field, field, np.log(participants), np.log1p(prior_count), is_debut,
+        get("prior_avg_rating_change"), get("prior_rating_change_std"), get("prior_best_rank"),
+        get("prior_avg_rank"), get("days_since_last_contest"), get("rating_trend_last3"), div_dummies,
+    ])
+    return X, y
+
+
+def chronological_split(contest_ids, train_frac=0.8, val_frac=0.1):
+    ids = np.asarray(contest_ids)
+    starts = np.flatnonzero(np.r_[True, ids[1:] != ids[:-1]])
+    n = len(ids)
+    train_end = int(starts[np.searchsorted(starts, int(train_frac * n))])
+    val_end = int(starts[np.searchsorted(starts, int((train_frac + val_frac) * n))])
+    return train_end, val_end
+
+
+def main():
+    rows = load()
+    X, y = build_matrix(rows)
+    train_end, val_end = chronological_split([int(r["contest_id"]) for r in rows])
+    X_train, y_train = X[:train_end], y[:train_end]
+    X_val, y_val = X[train_end:val_end], y[train_end:val_end]
+
+    beta = np.linalg.solve(X_train.T @ X_train + 1e-6 * np.eye(X_train.shape[1]), X_train.T @ y_train)
+
+    for label, Xs, ys in (("train", X_train, y_train), ("val", X_val, y_val)):
+        err = Xs @ beta - ys
+        print(f"{label}: MAE {np.abs(err).mean():.2f}, RMSE {np.sqrt((err ** 2).mean()):.2f}")
+
+
+if __name__ == "__main__":
+    main()
+```
 

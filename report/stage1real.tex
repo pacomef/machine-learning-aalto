@@ -7,11 +7,28 @@
 \usepackage{booktabs}
 \usepackage{url}
 \usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  breaklines=true,
+  breakatwhitespace=false,
+  showstringspaces=false,
+  keywordstyle=\color{blue!60!black},
+  stringstyle=\color{green!40!black},
+  commentstyle=\color{gray},
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  language=Python,
+}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{8pt}
 
-\title{Stage 1, Pacome Fromager, Machine Learning project}
+\title{Stage 1, Machine Learning project}
 \author{}
 \date{}
 
@@ -111,10 +128,24 @@ baseline (predict training mean) & 101.88 & 147.06 \\
 
 \section*{Use of AI}
 
-I used Claude Code for this project, mostly to write the scraping and feature-building scripts, to fit the linear regression, and to help me spot things in the data I wouldn't have caught on my own, like the whole 2020 elo bonus change and a bug in an earlier version of my division-parsing code. I decided what to build and what to keep, checked the numbers myself, and wrote this report on my own.
+I used Claude to typeset this document, and also to debug a lot of the functions that I was using, whether it is for the scraping, the data processing, or the training. I wrote this document myself and asked Claude to correct mistakes.
 
-\section*{Appendix}
+\section*{References}
 
-The code for this project (scraping, feature building, and training the linear regression) is available at \url{https://github.com/pacomef/machine-learning-aalto}.
+\begin{enumerate}
+  \item Codeforces. \url{https://codeforces.com}
+  \item Codeforces API documentation. \url{https://codeforces.com/apiHelp}
+\end{enumerate}
+
+\section*{Appendix: code}
+
+\subsection*{scrape.py}
+\lstinputlisting{code/scrape.py}
+
+\subsection*{build\_features.py}
+\lstinputlisting{code/build_features.py}
+
+\subsection*{train.py}
+\lstinputlisting{code/train.py}
 
 \end{document}

@@ -2,14 +2,14 @@
 
 Problem formulation:
 
-The aim of this project is to find the expected rating gain from contestants in competitive programming contests. The website used to find data, Codeforces, works with an elo rating similar to chess, and each contest affects this rating. The goal is to determine the elo gain from this contest given the past performances of an individual. It's most certainly impossible to reach a perfect score in that kind of task, but I will try to make it work as much as possible. This is a supervised regression problem: the label is `rating_change = new_rating - old_rating`, i.e. how much elo a contestant gains or loses from that one contest.
+The aim of this project is to find the expected rating gain from contestants in competitive programming contests. The website used to find data, Codeforces [1], works with an elo rating similar to chess, and each contest affects this rating. The goal is to determine the elo gain from this contest given the past performances of an individual. It's most certainly impossible to reach a perfect score in that kind of task, but I will try to make it work as much as possible. This is a supervised regression problem: the label is `rating_change = new_rating - old_rating`, i.e. how much elo a contestant gains or loses from that one contest.
 The dataset consists of 11,917,755 datapoints that I collected, all representing a performance of some individual in a given contest. There are 974,594 accounts in total, and 1796 contests, ranging from 2010-02-19 to 2026-09-13.
 
 The data is made of a lot of flags, showing for instance in which division is the contestant competing, and a lot of continuous data, like the current elo of the individual, etc. This will be detailed more later, but there are 18 features, among which 9 continuous ones, 8 binary ones, and an integer.
 
 Methods : 
 
-I first of all scrapped every contest I could find on codeforces.com, through their API. There were 2,145 of them, but 349 had no rated participants, thus I just removed them and had 1,796 contests left. The API gave 7 out of the 18 features that are included, and the rest of them were constructed to make more sense of the data. This was especially important because I was planning on using Linear Regression as the first method, and I knew that adding new features, which give some non-linearity, was going to be useful to get better results.
+I first of all scrapped every contest I could find on codeforces.com, through their API [2]. There were 2,145 of them, but 349 had no rated participants, thus I just removed them and had 1,796 contests left. The API gave 7 out of the 18 features that are included, and the rest of them were constructed to make more sense of the data. This was especially important because I was planning on using Linear Regression as the first method, and I knew that adding new features, which give some non-linearity, was going to be useful to get better results.
 
 What also matters a lot in determining the next performance in an upcoming contests is how many contests the individual took part in, because codeforces gives a serious boost to the first few contests. Accounts created since 2020 have a mean of +400, +270, +190, +100, +65, +25 of elo gain over the first 6 contests.
 
@@ -78,8 +78,9 @@ I used Claude to typeset this document, and also to debug a lot of the functions
 
 References:
 
-1. Codeforces. https://codeforces.com
-2. Codeforces API documentation. https://codeforces.com/apiHelp
+[1] Codeforces. https://codeforces.com. Accessed 18 September 2026.
+
+[2] Codeforces API Documentation. https://codeforces.com/apiHelp. Accessed 18 September 2026.
 
 Appendix: code
 

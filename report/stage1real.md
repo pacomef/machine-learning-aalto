@@ -66,5 +66,5 @@ I used Claude Code for this project, mostly to write the scraping and feature-bu
 
 Appendix:
 
-The code for this project (scraping, feature building, and training the linear regression) is attached below / available at [repo link].
+The code for this project (scraping, feature building, and training the linear regression) is available at https://github.com/pacomef/machine-learning-aalto.
 

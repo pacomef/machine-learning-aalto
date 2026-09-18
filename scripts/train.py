@@ -1,15 +1,11 @@
-"""Fit linear regression on rating_change via closed-form least squares.
-
-Split is chronological (80/10/10, cut at contest boundaries), not random,
-since Codeforces' rating system and population have drifted over 15+ years.
-"""
 import csv
 from pathlib import Path
 
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 SRC = Path(__file__).resolve().parent.parent / "data" / "features.csv"
-DIVISIONS = ["Div1", "Div2", "Div3", "Div4", "Div1+2", "Global", "ICPC"]  # "Other" = reference level
+DIVISIONS = ["Div1", "Div2", "Div3", "Div4", "Div1+2", "Global", "ICPC"]
 
 
 def load():
@@ -18,7 +14,6 @@ def load():
 
 
 def build_matrix(rows):
-    n = len(rows)
     get = lambda key: np.array([float(r[key] or 0) for r in rows])
     old, field = get("old_rating"), get("field_avg_rating")
     participants, prior_count = get("num_participants"), get("prior_contest_count")
@@ -28,7 +23,7 @@ def build_matrix(rows):
     div_dummies = np.array([[1.0 if r["division"] == d else 0.0 for d in DIVISIONS] for r in rows])
 
     X = np.column_stack([
-        np.ones(n), old - field, field, np.log(participants), np.log1p(prior_count), is_debut,
+        old - field, field, np.log(participants), np.log1p(prior_count), is_debut,
         get("prior_avg_rating_change"), get("prior_rating_change_std"), get("prior_best_rank"),
         get("prior_avg_rank"), get("days_since_last_contest"), get("rating_trend_last3"), div_dummies,
     ])
@@ -51,10 +46,11 @@ def main():
     X_train, y_train = X[:train_end], y[:train_end]
     X_val, y_val = X[train_end:val_end], y[train_end:val_end]
 
-    beta = np.linalg.solve(X_train.T @ X_train + 1e-6 * np.eye(X_train.shape[1]), X_train.T @ y_train)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
 
     for label, Xs, ys in (("train", X_train, y_train), ("val", X_val, y_val)):
-        err = Xs @ beta - ys
+        err = model.predict(Xs) - ys
         print(f"{label}: MAE {np.abs(err).mean():.2f}, RMSE {np.sqrt((err ** 2).mean()):.2f}")
 
 

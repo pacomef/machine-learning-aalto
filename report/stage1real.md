@@ -1,4 +1,4 @@
-# Stage 1, Pacome fromager, Machine Learning project
+# Stage 1, Pacome Fromager, Machine Learning project
 
 Problem formulation:
 
@@ -48,11 +48,11 @@ I trained it by minimizing the squared error, averaged over the n training point
 
     L(w, b) = (1/n) * sum_i (y_i - h(x_i))^2
 
-I picked it because it's differentiable everywhere, which is what lets L be minimized in closed form instead of needing an iterative solver: stacking every data point's features as rows of a matrix X and every label into a vector y, the weights that minimize L are given directly by the normal equations,
+It's the standard loss for a regression problem like this one, and it has a closed-form solution, the normal equations, so there's no need to iterate:
 
     w* = (X^T X)^-1 X^T y
 
-Squared error is also just the standard loss for a regression problem like this one. To actually judge how good it is I look at both the mean absolute error, directly in elo points, and the root mean squared error.
+To judge how good it is I look at the mean absolute error, directly in elo points, and the root mean squared error.
 
 Validation:
 

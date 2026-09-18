@@ -11,7 +11,7 @@ Methods :
 
 I first of all scrapped every contest I could find on codeforces.com, through their API. There were 2,145 of them, but 349 had no rated participants, thus I just removed them and had 1,796 contests left. The API gave 7 out of the 18 features that are included, and the rest of them were constructed to make more sense of the data. This was especially important because I was planning on using Linear Regression as the first method, and I knew that adding new features, which give some non-linearity, was going to be useful to get better results.
 
-What also matters a lot in determining the next performance in an upcoming contests is how many contests the individual took part in, because codeforces gives a serious boost to the first few contests. Accounts created since 2020 have a mean of +270, +190, +100, +65, +25 of elo gain over the first 6 contests.
+What also matters a lot in determining the next performance in an upcoming contests is how many contests the individual took part in, because codeforces gives a serious boost to the first few contests. Accounts created since 2020 have a mean of +400, +270, +190, +100, +65, +25 of elo gain over the first 6 contests.
 
 Feature selection:
 
@@ -36,11 +36,23 @@ Something I made sure NOT to use as a feature is the rank obtained in the contes
 
 Model:
 
-I went with Linear Regression to start with. When I plotted the elo change against the elo relative to the field, the relationship looked roughly linear (slope around -0.18), the weights stay easy to read afterwards, and fitting it is basically instant even on close to 10 million rows since it has a closed-form solution. I know it can't really capture the non-linear boost new accounts get though, so that's a limitation I'm aware of for this first method.
+I went with Linear Regression to start with. It predicts the elo change as a linear function of the 18 features:
+
+    h(x) = w^T x + b = sum_j w_j x_j + b
+
+where x is a data point's feature vector and w, b are learned from the training data. One of those 18 features is the elo relative to the field, `x_field = old_rating - field_avg_rating`. When I plotted the elo change against it, the relationship looked roughly linear (slope around -0.18), the weights stay easy to read afterwards, and fitting it is basically instant even on close to 10 million rows since it has a closed-form solution. I know it can't really capture the non-linear boost new accounts get though, so that's a limitation I'm aware of for this first method.
 
 Loss function:
 
-I trained it by minimizing the squared error (normal equations). I picked it because it's differentiable everywhere, which is what gives Linear Regression its closed-form solution instead of needing an iterative solver, and it's the standard loss for a regression problem like this one. To actually judge how good it is I look at both the mean absolute error, directly in elo points, and the root mean squared error.
+I trained it by minimizing the squared error, averaged over the n training points:
+
+    L(w, b) = (1/n) * sum_i (y_i - h(x_i))^2
+
+I picked it because it's differentiable everywhere, which is what lets L be minimized in closed form instead of needing an iterative solver: stacking every data point's features as rows of a matrix X and every label into a vector y, the weights that minimize L are given directly by the normal equations,
+
+    w* = (X^T X)^-1 X^T y
+
+Squared error is also just the standard loss for a regression problem like this one. To actually judge how good it is I look at both the mean absolute error, directly in elo points, and the root mean squared error.
 
 Validation:
 
